@@ -1,0 +1,9 @@
+# Secrets: Groq API key, Discord webhook URL, Twilio auth token.
+.env
+
+node_modules/
+npm-debug.log*
+.DS_Store
+
+# Local scratch notes, superseded by README.md
+tmp/
