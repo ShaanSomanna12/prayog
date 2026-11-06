@@ -19,7 +19,7 @@ notifyWarning,
 } from "./notifications.mjs";
 const app = express();
 const port = Number(process.env.PORT || 3001);
-const DEFAULT_GROQ_MODEL = "qwen/qwen3.6-27b";
+const DEFAULT_GROQ_MODEL = "qwen/qwen3.8-27b";
 const DEFAULT_OPENROUTER_MODEL = "anthropic/claude-3.5-haiku";
 const ENV_PATH = path.resolve(process.cwd(), ".env");
 

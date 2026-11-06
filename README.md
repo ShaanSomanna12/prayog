@@ -36,7 +36,7 @@ To get your API key:
      ```env
      AI_PROVIDER=groq
      GROQ_API_KEY=gsk_YOUR_KEY
-     GROQ_MODEL=qwen/qwen3.6-27b
+     GROQ_MODEL=qwen/qwen3.8-27b
      ```
 *(You can also simply launch the app and enter your key in the setup window in the browser).*
 
