@@ -1,19 +1,19 @@
-<img width="1201" height="328" alt="image" src="https://github.com/user-attachments/assets/92d3aff5-f772-4975-9388-fea676629c1e" />
+<img width="1201" height="328" alt="Watch Guard" src="public/assets/watch-guard-mark.svg" />
 
-Vision OPS Stands for: Vision Operation Systems
+# Watch Guard
 
-Vision OPS is an AI-powered fabrication monitoring camera designed for 3D printers, CNC machines, laser cutters, and maker spaces. Instead of simply recording video, Vision OPS watches a machine while it runs, detects early signs of failure or safety risk, and helps the operator understand what is going wrong.
+Watch Guard is an AI-powered fabrication monitoring camera platform designed for 3D printers, CNC machines, laser cutters, and maker spaces. Instead of simply recording video, Watch Guard watches a machine while it runs, detects early signs of failure or safety risk, and helps the operator understand what is going wrong.
 
 The device uses a clean orb-style webcam enclosure with RGB status lighting. Inside the enclosure, the only core component is a webcam, making the hardware simple, reliable, and easy to build. A USB-A cable provides both power and data, so it can plug directly into a laptop or demo computer.
 
-Vision OPS can detect problems such as 3D print spaghetti failures, poor bed adhesion, layer shifts, laser smoke or flame risk, CNC workpiece movement, tool chatter, and other visible machine issues. When a problem appears, the system can change its RGB status light, alert the user, capture snapshots, and generate an AI incident report with the likely cause and recommended next action.
+Watch Guard can detect problems such as 3D print spaghetti failures, poor bed adhesion, layer shifts, laser smoke or flame risk, CNC workpiece movement, tool chatter, and other visible machine issues. When a problem appears, the system can change its RGB status light, alert the user, capture snapshots, and generate an AI incident report with the likely cause and recommended next action.
 
-The goal of Vision OPS is to turn ordinary machine footage into useful operational intelligence. Most cameras only let you watch a machine fail. Vision OPS helps you catch the failure early, understand why it happened, and prevent it from happening again.
+The goal of Watch Guard is to turn ordinary machine footage into useful operational intelligence. Most cameras only let you watch a machine fail. Watch Guard helps you catch the failure early, understand why it happened, and prevent it from happening again.
 
-Additionally, Vision OPS is designed so it is able to monitor loaded filament, print status whether a machine is idle, needs attention, or printing ongoing. It is designed around the peace of mind of a user.
+Additionally, Watch Guard is designed so it is able to monitor loaded filament, print status whether a machine is idle, needs attention, or printing ongoing. It is designed around the peace of mind of a user.
 
 ----------------------------------------------------------------
-How to use Vision OPS?
+How to use Watch Guard?
 1. In your terminal type:
    ```bash
    git clone https://github.com/ShaanSomanna12/prayog.git
@@ -69,7 +69,7 @@ To get your API key:
 ----------------------------------------------------------------
 ## Alerts
 
-Vision OPS can message you on Discord when something goes wrong, so you do not
+Watch Guard can message you on Discord when something goes wrong, so you do not
 have to watch the camera feed. Nothing is sent until you configure a channel.
 
 ### What triggers a message
@@ -166,7 +166,7 @@ and the bot's display name.
 
 ### "The image request is too large" after the first analysis
 
-Vision OPS normally sends two images per analysis: the current frame and the
+Watch Guard normally sends two images per analysis: the current frame and the
 previous one, so the model can tell what changed. On Groq's free tier that pair
 costs roughly 8300 tokens against a limit of 8000 tokens per minute, so the
 first analysis succeeds and every one after it fails.
@@ -182,7 +182,7 @@ the Groq tier at [console.groq.com/settings/billing](https://console.groq.com/se
 
 ### "Port 3001 is already in use"
 
-Vision OPS is already running in another terminal window or browser tab session.
+Watch Guard is already running in another terminal window or browser tab session.
 Open <http://localhost:3001> instead of starting it again, or close the other
 window first. To run a second copy alongside it, give it another port:
 

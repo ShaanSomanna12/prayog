@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Vision OPS</title>
+<title>Watch Guard</title>
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon-64.png" />
 <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon-180.png" />
@@ -1491,8 +1491,8 @@ text-align: center;
 <canvas id="cursorTrail" aria-hidden="true"></canvas>
 <div id="setupOverlay" class="setup-overlay hidden">
 <div class="setup-card">
-<img class="setup-logo" src="assets/vision-ops-mark.png" alt="Vision OPS logo" />
-<h1>Welcome to Vision OPS</h1>
+<img class="setup-logo" src="assets/watch-guard-mark.svg" alt="Watch Guard logo" />
+<h1>Welcome to Watch Guard</h1>
 <p class="setup-sub">
 Connect your OpenRouter account (for Claude) or Groq account to start monitoring your machines. Your key is
 saved on this computer's own server (in its local .env file) — it never
@@ -1516,14 +1516,14 @@ For Claude: <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">
 </details>
 <p id="setupError" class="setup-error hidden"></p>
 <button id="setupSave" class="primary setup-save">Save &amp; Continue</button>
-<p class="setup-note">Claude requires an OpenRouter key (e.g. anthropic/claude-3.5-haiku). Vision OPS saves your session and configuration locally.</p>
+<p class="setup-note">Claude requires an OpenRouter key (e.g. anthropic/claude-3.5-haiku). Watch Guard saves your session and configuration locally.</p>
 </div>
 </div>
 <header class="app-header">
 <div class="brand">
-<img class="brand-mark" src="assets/vision-ops-mark.png" alt="Vision OPS logo" />
+<img class="brand-mark" src="assets/watch-guard-mark.svg" alt="Watch Guard logo" />
 <div>
-<div class="brand-name">Vision OPS</div>
+<div class="brand-name">Watch Guard</div>
 <div class="brand-subtitle">AI fabrication monitoring platform</div>
 </div>
 </div>
@@ -1552,7 +1552,7 @@ Monitors
 <span id="totalCount" class="count-pill">0 cameras</span>
 </h1>
 <p class="description">
-Vision OPS automatically labels each camera as Printing, Needs Attention, or Idle after AI analysis.
+Watch Guard automatically labels each camera as Printing, Needs Attention, or Idle after AI analysis.
 </p>
 </div>
 <button id="scanPage" class="secondary">Allow / Refresh Cameras</button>
@@ -2002,7 +2002,7 @@ return [];
 function saveWarehouseBlocks() {
 localStorage.setItem(WAREHOUSE_KEY, JSON.stringify(warehouseBlocks));
 }
-// Vision OPS occasionally has to refresh the page on its own (see
+// Watch Guard occasionally has to refresh the page on its own (see
 // scheduleAutoRecovery below) to recover from a Groq rate-limit error, since
 // a hard reload is the most reliable way to stop in-flight/queued requests
 // from continuing to hammer the API. saveSessionState/resumeSessionIfAvailable
@@ -2032,7 +2032,7 @@ localStorage.setItem(SESSION_STATE_KEY, JSON.stringify(buildSessionSnapshot(extr
 } catch (error) {
 // Most likely a quota error from accumulated event thumbnails. Retry once
 // with a trimmed history so a save failure never loses the whole session.
-console.error("Vision OPS: could not save session state, retrying with trimmed history.", error);
+console.error("Watch Guard: could not save session state, retrying with trimmed history.", error);
 try {
 const trimmedStates = {};
 Object.entries(cameraStates).forEach(([deviceId, state]) => {
@@ -2043,7 +2043,7 @@ SESSION_STATE_KEY,
 JSON.stringify(buildSessionSnapshot({ ...extra, cameraStates: trimmedStates })),
 );
 } catch (innerError) {
-console.error("Vision OPS: session state could not be saved even after trimming.", innerError);
+console.error("Watch Guard: session state could not be saved even after trimming.", innerError);
 }
 }
 }
@@ -2054,7 +2054,7 @@ if (!raw) return null;
 const snapshot = JSON.parse(raw);
 return snapshot && typeof snapshot === "object" ? snapshot : null;
 } catch (error) {
-console.error("Vision OPS: could not read saved session state.", error);
+console.error("Watch Guard: could not read saved session state.", error);
 return null;
 }
 }
@@ -2112,7 +2112,7 @@ rateLimitRetryCount += 1;
 saveSessionState({ wasAutoMonitoring, rateLimitRetryCount });
 let secondsLeft = Math.round(cooldownMs / 1000);
 const describe = () =>
-`Groq rate limit reached. Vision OPS saved your session and will refresh in ${secondsLeft}s to recover automatically…`;
+`Rate limit reached. Watch Guard saved your session and will refresh in ${secondsLeft}s to recover automatically…`;
 elements.message.textContent = describe();
 const countdown = setInterval(() => {
 secondsLeft = Math.max(0, secondsLeft - 1);
@@ -3046,7 +3046,7 @@ if (analyzing || !stream || !selectedMachineType) return;
 analyzing = true;
 elements.analyzeNow.disabled = true;
 showAnalyzing();
-elements.message.textContent = "Sending the frame to Vision OPS AI…";
+elements.message.textContent = "Sending the frame to Watch Guard AI…";
 try {
 const state = stateFor(selectedCameraId);
 const profile = cameraProfiles[selectedCameraId] || {};
@@ -3073,7 +3073,7 @@ if (!response.ok && response.status === 413 && hasReferenceImages) {
 // help) was exceeded by sending a reference/previous-frame image
 // alongside the current frame. Immediately retry with just the current
 // frame, which is a deterministic fix rather than a timing-based one.
-console.warn("Vision OPS: request too large with reference images; retrying with only the current frame.");
+console.warn("Watch Guard: request too large with reference images; retrying with only the current frame.");
 usedReferenceImages = false;
 ({ response, data } = await postAnalyze(basePayload));
 }
@@ -3081,15 +3081,15 @@ if (!response.ok) {
 console.error("Analyze request failed:", data);
 if (data.code === "missing_api_key") {
 showSetup();
-throw new Error("Add your Groq API key to start analyzing frames.");
+throw new Error("Add your API key to start analyzing frames.");
 }
 if (response.status === 401) {
 showSetup();
-throw new Error("Groq rejected that API key. Enter a new one to continue.");
+throw new Error("The API key was rejected. Enter a valid key to continue.");
 }
 if (response.status === 429) {
 scheduleAutoRecovery();
-throw new Error("Groq token/rate limit reached. Vision OPS will save your session and refresh automatically to recover.");
+throw new Error("API token/rate limit reached. Watch Guard will save your session and refresh automatically to recover.");
 }
 if (response.status === 413) {
 throw new Error("Even a single frame is too large for the current Groq rate limit. Try again shortly, or crop a smaller build-plate region in Calibrate.");
@@ -3332,7 +3332,7 @@ const report = `
 <html>
 <head>
 <meta charset="utf-8">
-<title>Vision OPS Report</title>
+<title>Watch Guard Report</title>
 <style>
 body { font-family: Arial; margin: 32px; }
 table { width: 100%; border-collapse: collapse; }
@@ -3341,7 +3341,7 @@ th { background: #eee; }
 </style>
 </head>
 <body>
-<h1>Vision OPS Camera Report</h1>
+<h1>Watch Guard Camera Report</h1>
 <p><b>Camera:</b> ${escapeHtml(profile.customName || "Camera")}</p>
 <table>
 <thead>
@@ -3364,7 +3364,7 @@ th { background: #eee; }
 const url = URL.createObjectURL(new Blob([report], { type: "text/html;charset=utf-8" }));
 const link = document.createElement("a");
 link.href = url;
-link.download = "Vision-OPS-camera-report.html";
+link.download = "Watch-Guard-camera-report.html";
 link.click();
 setTimeout(() => URL.revokeObjectURL(url), 500);
 }

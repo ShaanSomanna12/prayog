@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+  <defs>
+    <!-- Background / Shield Gradients -->
+    <linearGradient id="shieldBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a192f" />
+      <stop offset="50%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+
+    <linearGradient id="shieldBorder" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="40%" stop-color="#0284c7" />
+      <stop offset="100%" stop-color="#0369a1" />
+    </linearGradient>
+
+    <linearGradient id="neonGlow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#818cf8" />
+    </linearGradient>
+
+    <radialGradient id="lensGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.9" />
+      <stop offset="45%" stop-color="#0284c7" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#0284c7" stop-opacity="0" />
+    </radialGradient>
+
+    <filter id="glowEffect" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Outer Guardian Shield -->
+  <path d="M 60,6 
+           L 106,22 
+           L 106,62 
+           C 106,88 86,108 60,116 
+           C 34,108 14,88 14,62 
+           L 14,22 Z" 
+        fill="url(#shieldBg)" 
+        stroke="url(#shieldBorder)" 
+        stroke-width="3.5" 
+        stroke-linejoin="round" />
+
+  <!-- Inner Angular Shield Accent -->
+  <path d="M 60,15 
+           L 98,28 
+           L 98,60 
+           C 98,82 81,99 60,106 
+           C 39,99 22,82 22,60 
+           L 22,28 Z" 
+        fill="none" 
+        stroke="#0284c7" 
+        stroke-width="1.2" 
+        stroke-opacity="0.5" 
+        stroke-dasharray="4,3" />
+
+  <!-- Outer Radar / Sensor Ring -->
+  <circle cx="60" cy="58" r="30" fill="none" stroke="url(#neonGlow)" stroke-width="2" stroke-opacity="0.75" />
+
+  <!-- Corner Targeting Reticles -->
+  <path d="M 50,28 L 60,28 M 60,28 L 70,28" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" />
+  <path d="M 50,88 L 60,88 M 60,88 L 70,88" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" />
+  <path d="M 30,48 L 30,58 M 30,58 L 30,68" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" />
+  <path d="M 90,48 L 90,58 M 90,58 L 90,68" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" />
+
+  <!-- Watchful Eye Outer Lens -->
+  <path d="M 34,58 
+           C 42,42 78,42 86,58 
+           C 78,74 42,74 34,58 Z" 
+        fill="#071527" 
+        stroke="url(#neonGlow)" 
+        stroke-width="2.5" 
+        filter="url(#glowEffect)" />
+
+  <!-- Lens Aperture Radial Glow -->
+  <circle cx="60" cy="58" r="16" fill="url(#lensGlow)" />
+
+  <!-- Mechanical Iris Ring -->
+  <circle cx="60" cy="58" r="11" fill="#0b172a" stroke="#38bdf8" stroke-width="2.2" />
+
+  <!-- Pupil Sensor Core -->
+  <circle cx="60" cy="58" r="5" fill="#38bdf8" />
+  <circle cx="58.5" cy="56.5" r="1.5" fill="#ffffff" />
+
+  <!-- Dynamic Scanning Beam Accent -->
+  <line x1="38" y1="58" x2="82" y2="58" stroke="#38bdf8" stroke-width="1.2" stroke-opacity="0.4" />
+</svg>

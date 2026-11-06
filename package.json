@@ -1,8 +1,8 @@
 {
-  "name": "vision-ops",
+  "name": "watch-guard",
   "version": "1.0.0",
   "private": true,
-  "description": "Vision OPS camera monitoring prototype for fabrication machines",
+  "description": "Watch Guard camera monitoring prototype for fabrication machines",
   "type": "module",
   "scripts": {
     "start": "node server.mjs",

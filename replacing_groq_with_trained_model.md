@@ -1,4 +1,4 @@
-# Replacing Groq API with a Trained Model in Vision OPS
+# Replacing Groq API with a Trained Model in Watch Guard
 
 ## Current Architecture
 
@@ -55,7 +55,7 @@ async def predict(req: AnalyzeRequest):
     # Run inference
     results = model(img)
     
-    # Map results to Vision OPS expected format
+    # Map results to Watch Guard expected format
     return {
         "scene_state": "printing_normally",
         "material_pattern": "intentional_solid_geometry",

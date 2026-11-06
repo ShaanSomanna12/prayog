@@ -1,4 +1,4 @@
-// Discord notification layer for Vision OPS.
+// Discord notification layer for Watch Guard.
 //
 // Everything that leaves the machine goes through here: confirmed print
 // failures (with the frame that triggered them attached), recoveries, and
@@ -233,7 +233,7 @@ function buildPayload({ embed, mention, suppressed }) {
     };
   }
   return {
-    username: truncate(process.env.DISCORD_USERNAME || "Vision OPS", 80),
+    username: truncate(process.env.DISCORD_USERNAME || "Watch Guard", 80),
     content: mention ? truncate(mention, 200) : undefined,
     embeds,
     allowed_mentions: mention
@@ -307,7 +307,7 @@ export function notifyFailure({ cameraLabel, cameraId, result, snapshotDataUrl }
       ),
       field("Camera", cameraId && cameraId !== cameraLabel ? cameraId : "", true),
     ].filter(Boolean),
-    footer: { text: "Vision OPS" },
+    footer: { text: "Watch Guard" },
   };
   if (attachment) embed.image = { url: `attachment://${attachment.filename}` };
 
@@ -351,7 +351,7 @@ export function notifyWarning({ cameraLabel, cameraId, result, snapshotDataUrl }
       field("Evidence", result?.evidence, false),
       field("Next step", result?.next_step, false),
     ].filter(Boolean),
-    footer: { text: "Vision OPS • not yet confirmed" },
+    footer: { text: "Watch Guard • not yet confirmed" },
   };
   if (attachment) embed.image = { url: `attachment://${attachment.filename}` };
 
@@ -375,7 +375,7 @@ export function notifyRoutine({ cameraLabel, cameraId, result }) {
         field("Status", titleCase(result?.status)),
         field("Confidence", percent(result?.status_confidence)),
       ].filter(Boolean),
-      footer: { text: "Vision OPS • routine update" },
+      footer: { text: "Watch Guard • routine update" },
     },
     cooldownKey: `routine:${cameraId}`,
     cooldownMs: 0,
@@ -399,7 +399,7 @@ export function notifyRecovery({ cameraLabel, cameraId, result }) {
         field("Machine status", titleCase(result?.machine_status)),
         field("Confidence", percent(result?.status_confidence)),
       ].filter(Boolean),
-      footer: { text: "Vision OPS" },
+      footer: { text: "Watch Guard" },
     },
     cooldownKey: `recovery:${cameraId}`,
     cooldownMs: settings.failureCooldownMs,
@@ -414,7 +414,7 @@ export function notifyError({ scope, message, details = "", key = "", cameraLabe
 
   return send({
     embed: {
-      title: `${fatal ? "🛑" : "⚠️"} Vision OPS ${fatal ? "crashed" : "error"} — ${truncate(scope, 80)}`,
+      title: `${fatal ? "🛑" : "⚠️"} Watch Guard ${fatal ? "crashed" : "error"} — ${truncate(scope, 80)}`,
       description: truncate(message, 2000),
       color: fatal ? COLORS.failure : COLORS.error,
       timestamp: new Date().toISOString(),
@@ -422,7 +422,7 @@ export function notifyError({ scope, message, details = "", key = "", cameraLabe
         field("Camera", cameraLabel, true),
         field("Details", details ? `\`\`\`${truncate(details, 900)}\`\`\`` : "", false),
       ].filter(Boolean),
-      footer: { text: "Vision OPS" },
+      footer: { text: "Watch Guard" },
     },
     mention: fatal ? settings.mention : "",
     cooldownKey: key || `error:${scope}`,
@@ -437,7 +437,7 @@ export function notifyInfo({ title, message }) {
       description: truncate(message, 2000),
       color: COLORS.info,
       timestamp: new Date().toISOString(),
-      footer: { text: "Vision OPS" },
+      footer: { text: "Watch Guard" },
     },
   });
 }
@@ -445,12 +445,12 @@ export function notifyInfo({ title, message }) {
 export function notifyTest() {
   return send({
     embed: {
-      title: "🔔 Vision OPS test alert",
+      title: "🔔 Watch Guard test alert",
       description:
         "Notifications are wired up correctly. Real alerts fire on confirmed failures, recoveries, and runtime errors.",
       color: COLORS.info,
       timestamp: new Date().toISOString(),
-      footer: { text: "Vision OPS" },
+      footer: { text: "Watch Guard" },
     },
     mention: describeNotifications().mention,
   });

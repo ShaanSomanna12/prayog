@@ -1,4 +1,4 @@
-# Vision OPS — project guide, demo notes, and hackathon rating
+# Watch Guard — project guide, demo notes, and hackathon rating
 
 This file captures how the project works, how to run and test it without a real machine, and an honest take on hackathon competitiveness.
 
@@ -6,7 +6,7 @@ This file captures how the project works, how to run and test it without a real 
 
 ## What this project is
 
-**Vision OPS** (Vision Operation Systems) is an AI-powered fabrication monitoring camera for 3D printers, CNC machines, laser cutters, and maker spaces.
+**Watch Guard** is an AI-powered fabrication monitoring camera for 3D printers, CNC machines, laser cutters, and maker spaces.
 
 It does not only record video. It watches a machine, looks for early failure or safety risk, and helps the operator understand what went wrong.
 

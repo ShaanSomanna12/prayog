@@ -95,7 +95,7 @@ fs.writeFileSync(ENV_PATH, cleaned.join("\n").replace(/\n*$/, "\n"), "utf8");
 app.get("/api/health", (_request, response) => {
 response.json({
 ok: true,
-message: "Vision OPS backend is running.",
+message: "Watch Guard backend is running.",
 provider,
 model,
 });
@@ -577,7 +577,7 @@ headers: {
 "Authorization": `Bearer ${openrouterApiKey}`,
 "Content-Type": "application/json",
 "HTTP-Referer": "http://localhost:3001",
-"X-Title": "Vision OPS",
+"X-Title": "Watch Guard",
 },
 body: JSON.stringify({
 model,
@@ -866,7 +866,7 @@ operator: clean(jobContext.operator, 80),
 // Rebuilt per attempt: if the reference image has to be dropped to fit the
 // token budget, the prompt must stop claiming one was sent.
 const buildPrompt = (referenceType) => `
-You are Vision OPS, a conservative fabrication-machine visual inspector.
+You are Watch Guard, a conservative fabrication-machine visual inspector.
 Use only visible evidence. Never invent motion, sound, heat, smoke, or events.
 When the evidence sits between two classifications, prefer the one that flags a possible
 problem over the one that assumes the machine is fine — a small, easy-to-miss issue (one
@@ -966,7 +966,7 @@ console.warn(
 );
 if (!wasDisabled) {
 notifyInfo({
-title: "ℹ️ Vision OPS switched to single-frame analysis",
+title: "ℹ️ Watch Guard switched to single-frame analysis",
 message:
 "Two camera frames exceed this Groq tier's tokens-per-minute limit, so the reference " +
 "frame is no longer sent. Monitoring continues; frame-to-frame change detection is off. " +
@@ -1109,7 +1109,7 @@ process.on("uncaughtException", async (error) => {
 console.error("UNCAUGHT EXCEPTION:", error);
 notifyError({
 scope: "server",
-message: "Vision OPS crashed. Monitoring has stopped and the machine is unwatched.",
+message: "Watch Guard crashed. Monitoring has stopped and the machine is unwatched.",
 details: String(error?.stack || error?.message || error),
 key: "server:uncaught_exception",
 fatal: true,
@@ -1121,12 +1121,12 @@ process.exit(1);
 });
 
 // Express 5 runs an app.listen(port, callback) callback even when the bind
-// fails, which would print "Vision OPS is running" over a failed start. The
+// fails, which would print "Watch Guard is running" over a failed start. The
 // "listening" event only fires on a real bind, so the banner hangs off that.
 const server = app.listen(port);
 server.on("listening", () => {
 const notifications = describeNotifications();
-console.log(`Vision OPS is running at http://localhost:${port}`);
+console.log(`Watch Guard is running at http://localhost:${port}`);
 const hasActiveKey = provider === "openrouter" ? Boolean(openrouterApiKey) : Boolean(groq);
 console.log(`Provider: ${provider === "openrouter" ? "OpenRouter" : "Groq"} | Model: ${model}`);
 console.log(
@@ -1138,7 +1138,7 @@ if (notifications.configured) {
 console.log("Discord alerts enabled (confirmed failures, recoveries, and errors).");
 if (/^(1|true|yes|on)$/i.test(String(process.env.DISCORD_NOTIFY_STARTUP || "").trim())) {
 notifyInfo({
-title: "🟢 Vision OPS online",
+title: "🟢 Watch Guard online",
 message: `Monitoring backend started on port ${port} using ${model}.`,
 });
 }
@@ -1156,16 +1156,16 @@ console.log("Discord alerts disabled — set DISCORD_WEBHOOK_URL in .env to enab
 server.on("error", async (error) => {
 if (error?.code === "EADDRINUSE") {
 console.error(
-`\nPort ${port} is already in use — Vision OPS is probably already running.\n` +
+`\nPort ${port} is already in use — Watch Guard is probably already running.\n` +
 `Open http://localhost:${port} in your browser, or close the other terminal\n` +
 `window first. To run a second copy on another port: PORT=${port + 1} npm start\n`,
 );
 process.exit(1);
 }
-console.error("Vision OPS could not start:", error);
+console.error("Watch Guard could not start:", error);
 await notifyError({
 scope: "startup",
-message: `Vision OPS could not start on port ${port}, so nothing is being monitored.`,
+message: `Watch Guard could not start on port ${port}, so nothing is being monitored.`,
 details: String(error?.stack || error?.message || error),
 key: "server:listen_error",
 fatal: true,
@@ -1176,5 +1176,5 @@ process.exit(1);
 
 wss = new WebSocketServer({ server });
 wss.on("connection", (socket) => {
-socket.send(JSON.stringify({ type: "hello", message: "Connected to Vision OPS live updates." }));
+socket.send(JSON.stringify({ type: "hello", message: "Connected to Watch Guard live updates." }));
 });
