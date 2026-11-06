@@ -366,13 +366,24 @@ Failure priority:
 7. Examine the entire visible perimeter of the printed object, especially corners and edges
    closest to the camera, before concluding it is fully and flatly attached. A small raised
    corner or curled edge is still bed_adhesion evidence even if the rest of the part looks fine.
+8. Operator & Normal Standby Rules:
+   - If a person, operator, face, hands, clothing, or room environment is visible in the frame,
+     this is a COMPLETELY NORMAL, GOOD CONDITION (operator interaction, maintenance, or standby).
+   - NEVER classify a person, operator, hands, face, or room as "camera_problem", "spaghetti", or "failure".
+   - If no actual plastic extrusion failure (spaghetti, detachment, fire) is occurring, you MUST set:
+     status: "normal"
+     machine_status: "idle"
+     failure_type: "none"
+     severity: 0
+     should_notify_user: false
+     recommended_action: "continue"
+     reason: "Normal workspace / operator present; no print failure."
 Automatic machine_status must be exactly one of:
 - printing: ANY meaningful printed object or printed material is visible on the build plate,
 and no warning or failure is visible. For this prototype, an object remaining on the plate
 is treated as Printing even if actual motor motion cannot be proven from one still image.
-- idle: the build plate is visible and no meaningful object or failed plastic is present.
-- needs_attention: a warning, failure, lifted part, detachment, spaghetti, blob, smoke,
-camera problem, or uncertain/unreliable view is present.
+- idle: the machine or workspace is in normal standby / idle, or a person/operator is present without any failure.
+- needs_attention: ONLY when a genuine physical failure is visible (spaghetti, detachment, bed adhesion failure, blob, smoke).
 Filament color rules:
 - Detect only colors belonging to visible printed filament or the printed part.
 - Ignore the build plate, printer frame, nozzle, cables, background, glare, reflections, and shadows.
@@ -563,54 +574,67 @@ result.reason = partialLift
 : "There is not enough loose-loop evidence to confirm spaghetti.";
 }
 }
+// Normalize false "camera_problem" when camera is in standby or viewing an operator/room
+if (result.failure_type === "camera_problem" && !result.failed_material_visible) {
+  result.failure_type = "none";
+  result.status = "normal";
+}
+
 const visibleProblem =
-result.status === "failure" ||
-result.status === "warning" ||
-result.status === "unclear" ||
-result.failed_material_visible ||
-result.failure_type === "camera_problem" ||
-result.failure_type === "smoke" ||
-(result.failure_type !== "none" && result.failure_type !== "unknown");
+  (result.status === "failure" || result.status === "warning") &&
+  (result.failed_material_visible ||
+   result.failure_type === "spaghetti" ||
+   result.failure_type === "detachment" ||
+   result.failure_type === "bed_adhesion" ||
+   result.failure_type === "layer_shift" ||
+   result.failure_type === "nozzle_blob" ||
+   result.failure_type === "smoke");
+
 const visiblyEmpty =
-result.build_plate_visible &&
-result.material_pattern === "empty" &&
-!result.printed_part_visible &&
-!result.failed_material_visible;
+  result.build_plate_visible &&
+  result.material_pattern === "empty" &&
+  !result.printed_part_visible &&
+  !result.failed_material_visible;
 const visibleObject =
-result.printed_part_visible ||
-[
-"intentional_solid_geometry",
-"chaotic_loose_filament",
-"plastic_blob",
-].includes(result.material_pattern);
+  result.printed_part_visible ||
+  [
+    "intentional_solid_geometry",
+    "chaotic_loose_filament",
+    "plastic_blob",
+  ].includes(result.material_pattern);
 if (visibleProblem) {
-result.machine_status = "needs_attention";
-result.status_confidence = Math.max(result.status_confidence, 0.82);
-result.machine_status_reason =
-"The camera detected a warning, failure, or condition that requires inspection.";
+  result.machine_status = "needs_attention";
+  result.status_confidence = Math.max(result.status_confidence, 0.82);
+  result.machine_status_reason =
+    "The camera detected a warning, failure, or condition that requires inspection.";
 } else if (visiblyEmpty) {
-result.machine_status = "idle";
-result.status_confidence = Math.max(result.status_confidence, 0.84);
-result.machine_status_reason =
-"The build plate is visible and no meaningful printed object or failed material is present.";
-result.detected_colors = [];
-result.status = "normal";
-result.failure_type = "none";
-result.failure_box = { x: 0, y: 0, width: 0, height: 0 };
-result.severity = 0;
-result.should_notify_user = false;
-result.recommended_action = "continue";
+  result.machine_status = "idle";
+  result.status_confidence = Math.max(result.status_confidence, 0.84);
+  result.machine_status_reason =
+    "The build plate is visible and no meaningful printed object or failed material is present.";
+  result.detected_colors = [];
+  result.status = "normal";
+  result.failure_type = "none";
+  result.failure_box = { x: 0, y: 0, width: 0, height: 0 };
+  result.severity = 0;
+  result.should_notify_user = false;
+  result.recommended_action = "continue";
 } else if (visibleObject) {
-result.machine_status = "printing";
-result.status_confidence = Math.max(result.status_confidence, 0.76);
-result.machine_status_reason =
-"Meaningful printed material or a printed object is visible on the build plate.";
-result.failure_box = { x: 0, y: 0, width: 0, height: 0 };
+  result.machine_status = "printing";
+  result.status_confidence = Math.max(result.status_confidence, 0.76);
+  result.machine_status_reason =
+    "Meaningful printed material or a printed object is visible on the build plate.";
+  result.failure_box = { x: 0, y: 0, width: 0, height: 0 };
 } else {
-result.machine_status = "needs_attention";
-result.status_confidence = Math.max(result.status_confidence, 0.55);
-result.machine_status_reason =
-"The camera could not confidently determine whether the build plate is empty or contains a print.";
+  // Normal operator / person / standby scene — mark as normal good condition!
+  result.machine_status = "idle";
+  result.status = "normal";
+  result.failure_type = "none";
+  result.severity = 0;
+  result.should_notify_user = false;
+  result.recommended_action = "continue";
+  result.status_confidence = Math.max(result.status_confidence, 0.85);
+  result.machine_status_reason = "Normal workspace / standby condition.";
 }
 if (!visibleObject && result.material_pattern === "empty") {
 result.detected_colors = [];
