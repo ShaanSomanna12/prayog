@@ -19,17 +19,21 @@ notifyWarning,
 } from "./notifications.mjs";
 const app = express();
 const port = Number(process.env.PORT || 3001);
-const DEFAULT_MODEL = "qwen/qwen3.6-27b";
+const DEFAULT_GROQ_MODEL = "qwen/qwen3.6-27b";
+const DEFAULT_OPENROUTER_MODEL = "anthropic/claude-3.5-haiku";
 const ENV_PATH = path.resolve(process.cwd(), ".env");
 
-// GROQ_API_KEY and GROQ_MODEL can arrive via .env at boot, OR be entered later
-// from the landing page (see /api/config below), so we keep them mutable
-// rather than frozen consts.
-let model = process.env.GROQ_MODEL || DEFAULT_MODEL;
-let groq = process.env.GROQ_API_KEY
-? new Groq({ apiKey: process.env.GROQ_API_KEY })
-: null;
-const requestTimeoutMs = Number(process.env.GROQ_TIMEOUT_MS || 20_000);
+let openrouterApiKey = (process.env.OPENROUTER_API_KEY || "").trim();
+let groqApiKey = (process.env.GROQ_API_KEY || "").trim();
+
+// Auto-detect provider: defaults to openrouter if OPENROUTER_API_KEY or AI_PROVIDER=openrouter is set
+let provider = process.env.AI_PROVIDER || (openrouterApiKey ? "openrouter" : "groq");
+let model = provider === "openrouter"
+  ? (process.env.OPENROUTER_MODEL || DEFAULT_OPENROUTER_MODEL)
+  : (process.env.GROQ_MODEL || DEFAULT_GROQ_MODEL);
+
+let groq = groqApiKey ? new Groq({ apiKey: groqApiKey }) : null;
+const requestTimeoutMs = Number(process.env.GROQ_TIMEOUT_MS || process.env.AI_TIMEOUT_MS || 25_000);
 
 // Groq's free tier caps vision requests at 8000 tokens per minute. One 320px
 // frame fits; the moment the UI starts sending the previous frame as a
@@ -92,39 +96,72 @@ app.get("/api/health", (_request, response) => {
 response.json({
 ok: true,
 message: "Vision OPS backend is running.",
+provider,
 model,
 });
 });
 
 app.get("/api/config", (_request, response) => {
+const activeKey = provider === "openrouter" ? openrouterApiKey : groqApiKey;
 response.json({
-hasApiKey: Boolean(groq),
+provider,
+hasApiKey: Boolean(provider === "openrouter" ? openrouterApiKey : groq),
 model,
-maskedApiKey: maskKey(process.env.GROQ_API_KEY),
+maskedApiKey: maskKey(activeKey),
 });
 });
 
 app.post("/api/config", (request, response) => {
 const apiKey = clean(request.body?.apiKey, 200);
 const requestedModel = clean(request.body?.model, 120);
-if (!apiKey || !/^gsk_[A-Za-z0-9]+$/.test(apiKey)) {
+const isOpenRouterKey = apiKey.startsWith("sk-or-") || (apiKey.startsWith("sk-") && !apiKey.startsWith("gsk_"));
+const isGroqKey = apiKey.startsWith("gsk_");
+
+if (!apiKey || (!isOpenRouterKey && !isGroqKey)) {
 return response.status(400).json({
-error: "That doesn't look like a valid Groq API key (should start with 'gsk_').",
+error: "Please enter a valid OpenRouter API key (starts with 'sk-or-') or Groq API key (starts with 'gsk_').",
 });
 }
 try {
+if (isOpenRouterKey) {
+provider = "openrouter";
+openrouterApiKey = apiKey;
+process.env.AI_PROVIDER = "openrouter";
+process.env.OPENROUTER_API_KEY = apiKey;
+if (requestedModel) {
+model = requestedModel;
+process.env.OPENROUTER_MODEL = requestedModel;
+} else if (!model || !model.includes("/")) {
+model = DEFAULT_OPENROUTER_MODEL;
+process.env.OPENROUTER_MODEL = model;
+}
+upsertEnvFile({
+AI_PROVIDER: "openrouter",
+OPENROUTER_API_KEY: apiKey,
+OPENROUTER_MODEL: model,
+});
+console.log(`OpenRouter key configured for Claude (${maskKey(apiKey)}). Model: ${model}`);
+} else {
+provider = "groq";
+groqApiKey = apiKey;
 groq = new Groq({ apiKey });
+process.env.AI_PROVIDER = "groq";
 process.env.GROQ_API_KEY = apiKey;
 if (requestedModel) {
 model = requestedModel;
 process.env.GROQ_MODEL = requestedModel;
+} else if (!model || model.startsWith("anthropic/")) {
+model = DEFAULT_GROQ_MODEL;
+process.env.GROQ_MODEL = model;
 }
 upsertEnvFile({
+AI_PROVIDER: "groq",
 GROQ_API_KEY: apiKey,
-...(requestedModel ? { GROQ_MODEL: requestedModel } : {}),
+GROQ_MODEL: model,
 });
 console.log(`Groq API key configured from the browser (${maskKey(apiKey)}). Model: ${model}`);
-response.json({ ok: true, model, maskedApiKey: maskKey(apiKey) });
+}
+response.json({ ok: true, provider, model, maskedApiKey: maskKey(apiKey) });
 } catch (error) {
 console.error("Failed to save API key:", error);
 response.status(500).json({ error: "The key could not be saved on the server." });
@@ -529,19 +566,57 @@ async function requestAnalysis(content) {
 const maxAttempts = 2;
 let lastRawText = "";
 for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+let rawText = "";
+if (provider === "openrouter") {
+const controller = new AbortController();
+const timer = setTimeout(() => controller.abort(), requestTimeoutMs);
+try {
+const fetchRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+method: "POST",
+headers: {
+"Authorization": `Bearer ${openrouterApiKey}`,
+"Content-Type": "application/json",
+"HTTP-Referer": "http://localhost:3001",
+"X-Title": "Vision OPS",
+},
+body: JSON.stringify({
+model,
+messages: [{ role: "user", content }],
+response_format: { type: "json_object" },
+temperature: 0,
+max_tokens: 2048,
+}),
+signal: controller.signal,
+});
+
+if (!fetchRes.ok) {
+const errBody = await fetchRes.json().catch(() => ({}));
+const errMsg =
+errBody?.error?.message ||
+fetchRes.statusText ||
+`OpenRouter HTTP ${fetchRes.status}`;
+const err = new Error(errMsg);
+err.status = fetchRes.status;
+err.error = errBody;
+err.provider = "OpenRouter";
+throw err;
+}
+
+const data = await fetchRes.json();
+rawText = data?.choices?.[0]?.message?.content || "";
+} finally {
+clearTimeout(timer);
+}
+} else {
+if (!groq) {
+throw new Error("No Groq client configured. Please provide a Groq API key.");
+}
 const isReasoningModel = /qwen|deepseek/i.test(model);
 const completion = await groq.chat.completions.create(
 {
 model,
 messages: [{ role: "user", content }],
 response_format: { type: "json_object" },
-// Reasoning models (e.g. qwen3) can spend their entire completion budget
-// thinking and never emit the JSON answer at all (Groq then rejects the
-// request with json_validate_failed / empty failed_generation), and leak
-// <think> tokens into `content` unless reasoning_format is set, which also
-// breaks JSON.parse. Disable reasoning and hide/parse leaked tokens
-// defensively. Non-reasoning models reject these fields outright, so only
-// send them when the configured model actually supports reasoning.
 ...(isReasoningModel ? { reasoning_effort: "none", reasoning_format: "hidden" } : {}),
 temperature: 0,
 max_completion_tokens: 2048,
@@ -549,7 +624,9 @@ stream: false,
 },
 { timeout: requestTimeoutMs, maxRetries: 2 },
 );
-const rawText = completion.choices[0]?.message?.content;
+rawText = completion.choices[0]?.message?.content || "";
+}
+
 if (!rawText) {
 lastRawText = "";
 continue;
@@ -564,7 +641,8 @@ rawText.slice(0, 300),
 );
 }
 }
-const error = new Error("Groq returned text that was not valid JSON after retrying.");
+const providerLabel = provider === "openrouter" ? "OpenRouter" : "Groq";
+const error = new Error(`${providerLabel} returned text that was not valid JSON after retrying.`);
 error.invalidJson = true;
 error.rawText = lastRawText;
 throw error;
@@ -728,9 +806,11 @@ return driver.pause();
 }
 app.post("/api/analyze-machine", async (request, response) => {
 try {
-if (!groq) {
+const hasKey = provider === "openrouter" ? Boolean(openrouterApiKey) : Boolean(groq);
+if (!hasKey) {
+const providerLabel = provider === "openrouter" ? "OpenRouter" : "Groq";
 return response.status(401).json({
-error: "No Groq API key is configured yet. Add one from the setup screen.",
+error: `No ${providerLabel} API key is configured yet. Add one in .env or the setup screen.`,
 code: "missing_api_key",
 });
 }
@@ -896,7 +976,8 @@ message:
 ({ rawResult, attempts } = await requestAnalysis(buildContent(currentOnly)));
 }
 const latencyMs = Date.now() - startedAt;
-console.log(`Groq responded in ${latencyMs}ms (attempts=${attempts}).`);
+const providerLabel = provider === "openrouter" ? "OpenRouter" : "Groq";
+console.log(`${providerLabel} responded in ${latencyMs}ms (attempts=${attempts}).`);
 const normalized = normalizeResult(rawResult, { machineType });
 const confirmation = updateConfirmation(cameraId, normalized);
 const payload = {
@@ -963,41 +1044,42 @@ notifyRoutine({ cameraId, cameraLabel, result: payload });
 }
 } catch (error) {
 const failedCameraLabel = clean(request.body?.cameraLabel, 100) || "unknown camera";
+const providerLabel = provider === "openrouter" ? "OpenRouter" : "Groq";
 if (error?.invalidJson) {
 notifyError({
 scope: "analysis",
-message: `Groq returned unparseable JSON for "${failedCameraLabel}". Monitoring is not producing results.`,
+message: `${providerLabel} returned unparseable JSON for "${failedCameraLabel}". Monitoring is not producing results.`,
 details: (error.rawText || "").slice(0, 400),
 cameraLabel: failedCameraLabel,
 key: "analyze:invalid_json",
 });
 return response.status(502).json({
-error: "Groq returned text that was not valid JSON.",
+error: `${providerLabel} returned text that was not valid JSON.`,
 code: "invalid_json",
 details: (error.rawText || "").slice(0, 500),
 });
 }
-console.error("FULL GROQ ERROR:", error);
+console.error(`FULL ${providerLabel.toUpperCase()} ERROR:`, error);
 const status = Number(error?.status) || 500;
 const details =
 error?.error?.error?.message ||
 error?.error?.message ||
 error?.message ||
-"Unknown Groq API error.";
+`Unknown ${providerLabel} API error.`;
 const messages = {
-400: "Groq rejected the request format.",
-401: "Groq rejected the API key.",
-403: "This account cannot use the selected model.",
-404: `Groq could not find the model: ${model}`,
-413: "The image request is too large.",
-422: "Groq could not produce valid JSON. Try again.",
-429:
-"Groq token or request limit reached. Stop auto monitoring and wait about one minute.",
-500: "Groq experienced an internal error.",
-502: "Groq returned an invalid response.",
-503: "Groq is temporarily unavailable.",
+400: `${providerLabel} rejected the request format.`,
+401: `${providerLabel} rejected the API key. Please check your key.`,
+402: "OpenRouter account balance is insufficient. Please top up credits at openrouter.ai/credits.",
+403: `This account cannot use the selected model: ${model}.`,
+404: `${providerLabel} could not find the model: ${model}`,
+413: "The image request is too large for the model limits.",
+422: `${providerLabel} could not produce valid JSON. Try again.`,
+429: `${providerLabel} token or rate limit reached. Please wait a moment.`,
+500: `${providerLabel} experienced an internal error.`,
+502: `${providerLabel} returned an invalid response.`,
+503: `${providerLabel} is temporarily unavailable.`,
 };
-const summary = messages[status] || `Groq request failed with status ${status}.`;
+const summary = messages[status] || `${providerLabel} request failed with status ${status}.`;
 notifyError({
 scope: "analysis",
 message: `${summary} Monitoring on "${failedCameraLabel}" is not producing results.`,
@@ -1045,11 +1127,12 @@ const server = app.listen(port);
 server.on("listening", () => {
 const notifications = describeNotifications();
 console.log(`Vision OPS is running at http://localhost:${port}`);
-console.log(`Groq vision model: ${model}`);
+const hasActiveKey = provider === "openrouter" ? Boolean(openrouterApiKey) : Boolean(groq);
+console.log(`Provider: ${provider === "openrouter" ? "OpenRouter (Claude)" : "Groq"} | Model: ${model}`);
 console.log(
-groq
-? "Groq API key loaded from .env."
-: "No Groq API key yet — open the app and use the setup screen to add one.",
+hasActiveKey
+? `${provider === "openrouter" ? "OpenRouter" : "Groq"} API key loaded.`
+: `No API key yet — open the app to configure or add OPENROUTER_API_KEY in .env.`,
 );
 if (notifications.configured) {
 console.log("Discord alerts enabled (confirmed failures, recoveries, and errors).");

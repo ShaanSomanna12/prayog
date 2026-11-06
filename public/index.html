@@ -1494,7 +1494,7 @@ text-align: center;
 <img class="setup-logo" src="assets/vision-ops-mark.png" alt="Vision OPS logo" />
 <h1>Welcome to Vision OPS</h1>
 <p class="setup-sub">
-Connect your Groq account to start monitoring your machines. Your key is
+Connect your OpenRouter account (for Claude) or Groq account to start monitoring your machines. Your key is
 saved on this computer's own server (in its local .env file) — it never
 leaves this machine.
 </p>
@@ -1502,21 +1502,21 @@ leaves this machine.
 <span class="setup-current-key-label">Active key</span>
 <span id="setupCurrentKeyValue" class="setup-current-key-value"></span>
 </div>
-<label class="setup-label" for="setupApiKey">New Groq API key</label>
+<label class="setup-label" for="setupApiKey">API Key (OpenRouter or Groq)</label>
 <div class="setup-input-row">
-<input id="setupApiKey" type="password" placeholder="gsk_..." autocomplete="off" spellcheck="false" />
+<input id="setupApiKey" type="password" placeholder="sk-or-v1-... (OpenRouter / Claude) or gsk_... (Groq)" autocomplete="off" spellcheck="false" />
 <button id="setupToggleVisibility" type="button">Show</button>
 </div>
 <p class="setup-hint">
-Don't have one? <a href="https://console.groq.com/keys" target="_blank" rel="noopener">Get a free key at console.groq.com</a>
+For Claude: <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">Get an OpenRouter key at openrouter.ai/keys</a> &bull; For Groq: <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com</a>
 </p>
 <details class="setup-advanced">
 <summary>Advanced: vision model</summary>
-<input id="setupModel" type="text" placeholder="qwen/qwen3.6-27b" />
+<input id="setupModel" type="text" placeholder="anthropic/claude-3.5-haiku or qwen/qwen3.6-27b" />
 </details>
 <p id="setupError" class="setup-error hidden"></p>
 <button id="setupSave" class="primary setup-save">Save &amp; Continue</button>
-<p class="setup-note">This only reopens if your key is rejected. If you hit Groq's per-minute rate limit instead, Vision OPS saves your session and refreshes automatically to recover — no new key needed.</p>
+<p class="setup-note">Claude requires an OpenRouter key (e.g. anthropic/claude-3.5-haiku). Vision OPS saves your session and configuration locally.</p>
 </div>
 </div>
 <header class="app-header">
@@ -1912,7 +1912,7 @@ async function saveSetup() {
 const apiKey = elements.setupApiKey.value.trim();
 const modelValue = elements.setupModel.value.trim();
 if (!apiKey) {
-elements.setupError.textContent = "Enter your Groq API key first.";
+elements.setupError.textContent = "Enter your API key first (OpenRouter or Groq).";
 elements.setupError.classList.remove("hidden");
 return;
 }

@@ -14,15 +14,31 @@ Additionally, Vision OPS is designed so it is able to monitor loaded filament, p
 
 ----------------------------------------------------------------
 How to use Vision OPS?
-1. In your terminal type git clone https://github.com/FIR3Business/Vision-OPS-Monitoring (It will save in the folder you are cd in the terminal!)
+1. In your terminal type:
+   ```bash
+   git clone https://github.com/ShaanSomanna12/prayog.git
+   cd prayog
+   ```
+
 2. PLEASE ENTER YOUR API KEY
-To get your api key: 
-a) Go to this website: https://console.groq.com/keys
-
-
-b) Sign into the website, and make your API key
-c) Copy your API key, and paste it into the .env file in the code
-d) Ctrl/CMD+S to save the .env file
+To get your API key:
+- **For Claude (Recommended):**
+  a) Go to https://openrouter.ai/keys
+  b) Create your key and add it to `.env`:
+     ```env
+     AI_PROVIDER=openrouter
+     OPENROUTER_API_KEY=sk-or-v1-YOUR_KEY
+     OPENROUTER_MODEL=anthropic/claude-3.5-haiku
+     ```
+- **For Groq:**
+  a) Go to https://console.groq.com/keys
+  b) Create your key and add it to `.env`:
+     ```env
+     AI_PROVIDER=groq
+     GROQ_API_KEY=gsk_YOUR_KEY
+     GROQ_MODEL=qwen/qwen3.6-27b
+     ```
+*(You can also simply launch the app and enter your key in the setup window in the browser).*
 
 3. After entering API key, go into the folder containing the files
    
