@@ -23,13 +23,13 @@ if (result.success) {
   console.log(`   Message SID: ${result.sid}`);
 } else {
   console.log(`❌ Delivery failed: ${result.error}`);
-  if (result.code === 63016 || result.code === 21608) {
+  if (result.code === 63016 || result.code === 21608 || result.code === 21654) {
+    const joinCode = process.env.TWILIO_WHATSAPP_JOIN_CODE || 'join stairs-term';
     console.log('\n👉 ACTION REQUIRED TO ACTIVATE WHATSAPP SANDBOX:');
     console.log('   1. Open WhatsApp on your phone (+916363813684).');
     console.log('   2. Start a new chat to: +1 415 523 8886 (Twilio Sandbox)');
-    console.log('   3. Check your Twilio Console for your unique join word, or visit:');
-    console.log('      https://console.twilio.com/us1/develop/sms/try-it-out/whatsapp-learn');
-    console.log('   4. Send "join <your-keyword>" to that number.');
+    console.log(`   3. Send this exact text message: "${joinCode}"`);
+    console.log('   4. Twilio will reply: "You are all set! Sandbox is connected."');
     console.log('   5. Run "node test-whatsapp.mjs" again!');
   }
 }

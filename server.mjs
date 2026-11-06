@@ -18,7 +18,13 @@ notifyTest,
 notifyWarning,
 } from "./notifications.mjs";
 import { pushToSupabase } from "./supabase-bridge.mjs";
-import { dispatchFailureAlert, isTwilioConfigured } from "./sms-service.mjs";
+import {
+  dispatchFailureAlert,
+  isTwilioConfigured,
+  incidentManager,
+  sendWhatsApp,
+} from "./sms-service.mjs";
+import { queryEdgeInference } from "./cascade-orchestrator.mjs";
 const app = express();
 const port = Number(process.env.PORT || 3001);
 const DEFAULT_GROQ_MODEL = "qwen/qwen3.8-27b";
@@ -835,6 +841,49 @@ return response.json({ ok: true, results });
 return response.status(500).json({ error: error.message });
 }
 });
+
+// Twilio WhatsApp & Recurring Reminder API
+app.get("/api/notifications/reminders", (_request, response) => {
+  response.json(incidentManager.getStatus());
+});
+
+app.post("/api/notifications/reminders/acknowledge", async (request, response) => {
+  const cameraId = request.body?.cameraId || "default";
+  const user = request.body?.user || "Operator";
+  try {
+    const ack = await incidentManager.acknowledgeFailure(cameraId, user);
+    if (!ack) {
+      return response.status(404).json({ error: `No active unresolved incident for camera "${cameraId}".` });
+    }
+    return response.json({ ok: true, incident: ack });
+  } catch (err) {
+    return response.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/notifications/reminders/trigger", async (request, response) => {
+  const cameraId = request.body?.cameraId || "default";
+  try {
+    const outcome = await incidentManager.triggerImmediateReminder(cameraId);
+    return response.json({ ok: true, outcome });
+  } catch (err) {
+    return response.status(400).json({ error: err.message });
+  }
+});
+
+app.post("/api/notifications/whatsapp/test", async (request, response) => {
+  if (!isTwilioConfigured()) {
+    return response.status(400).json({ error: "Twilio credentials not configured in .env." });
+  }
+  const to = request.body?.to || (process.env.ALERT_PHONE_NUMBERS || "+916363813684").split(",")[0].trim();
+  const body = request.body?.message || `🔔 *[Watch Guard Test]*\nTwilio WhatsApp alert system is live!\n⏱ _${new Date().toLocaleTimeString()}_`;
+  const result = await sendWhatsApp({ to, body });
+  if (result.success) {
+    return response.json({ ok: true, result });
+  } else {
+    return response.status(502).json({ ok: false, error: result.error, code: result.code });
+  }
+});
 const printerDrivers = {
 none: {
 async pause() {
@@ -843,19 +892,33 @@ return { ok: false, skipped: true, reason: "No PRINTER_DRIVER configured." };
 },
 octoprint: {
 async pause() {
-const baseUrl = process.env.OCTOPRINT_URL;
+const rawUrl = process.env.OCTOPRINT_URL || process.env.PRINTER_IP;
 const apiKey = process.env.OCTOPRINT_API_KEY;
-if (!baseUrl || !apiKey) {
-return { ok: false, skipped: true, reason: "OCTOPRINT_URL or OCTOPRINT_API_KEY is missing." };
+if (!rawUrl || !apiKey) {
+return { ok: false, skipped: true, reason: "OCTOPRINT_URL (or PRINTER_IP) or OCTOPRINT_API_KEY is missing." };
 }
+const baseUrl = rawUrl.startsWith("http://") || rawUrl.startsWith("https://") ? rawUrl : `http://${rawUrl}`;
 try {
 const response = await fetch(`${baseUrl.replace(/\/$/, "")}/api/job`, {
 method: "POST",
-headers: { "Content-Type": "application/json", "X-Api-Key": apiKey },
-body: JSON.stringify({ command: "pause", action: "pause" }),
+headers: {
+"Content-Type": "application/json",
+"X-Api-Key": apiKey,
+},
+body: JSON.stringify({
+command: "pause",
+action: "pause", // Enforces idempotency to prevent accidental toggling
+}),
 });
-return { ok: response.ok, status: response.status };
+if (response.status === 204 || response.ok) {
+console.log("[OctoPrint] Successfully halted the G-code stream.");
+return { ok: true, status: response.status };
+} else {
+console.error(`[OctoPrint] Pause command rejected with status: ${response.status}`);
+return { ok: false, status: response.status, error: `Rejected with status ${response.status}` };
+}
 } catch (driverError) {
+console.error("[OctoPrint] Network/driver error:", driverError.message);
 return { ok: false, error: driverError.message };
 }
 },
@@ -882,6 +945,11 @@ const driverName = process.env.PRINTER_DRIVER || "none";
 const driver = printerDrivers[driverName] || printerDrivers.none;
 return driver.pause();
 }
+
+app.post("/api/printer/pause", async (_request, response) => {
+const outcome = await pausePrinter();
+response.json(outcome);
+});
 app.post("/api/analyze-machine", async (request, response) => {
 try {
 const hasKey = provider === "openrouter" ? Boolean(openrouterApiKey) : Boolean(groq);
@@ -1026,6 +1094,65 @@ console.log(
 `Analyzing with ${model}; images=${attemptImages.length}; machine=${machineType}`,
 );
 const startedAt = Date.now();
+
+// --- PHASE 1: HYBRID CASCADE EDGE TRIAGE ---
+const edgeData = await queryEdgeInference(currentImageDataUrl);
+if (edgeData) {
+  if (edgeData.status === "nominal") {
+    const latencyMs = Date.now() - startedAt;
+    console.log(`[Edge Triage] Frame is nominal (YOLO). Cloud VLM call bypassed (${latencyMs}ms).`);
+    const normalized = {
+      scene_state: "printing_normally",
+      material_pattern: "intentional_solid_geometry",
+      attachment_state: "attached_flat",
+      loose_filament_extent: "none",
+      build_plate_visible: true,
+      printed_part_visible: true,
+      failed_material_visible: false,
+      temporal_change_detected: false,
+      machine_status: "printing",
+      status_confidence: 0.95,
+      detected_colors: [],
+      status: "normal",
+      failure_type: "none",
+      failure_box: { x: 0, y: 0, width: 0, height: 0 },
+      confidence: edgeData.highest_confidence || 0.9,
+      severity: 0,
+      should_notify_user: false,
+      recommended_action: "continue",
+      reason: "Fabrication proceeding nominally (Local Edge Triage).",
+      evidence: "No print anomalies detected by local YOLO model.",
+      probable_cause: "none",
+      next_step: "continue",
+      machine_status_reason: "Fabrication proceeding nominally.",
+      edge_triaged: true,
+    };
+    const confirmation = updateConfirmation(cameraId, normalized);
+    const payload = {
+      ...normalized,
+      ...confirmation,
+      latency_ms: latencyMs,
+      camera_id: cameraId,
+    };
+    response.json(payload);
+    broadcast({ type: "status_update", cameraId, cameraLabel, result: payload });
+    pushToSupabase({
+      ...payload,
+      machine_name: cameraLabel,
+      machine_type: machineType,
+      snapshot: currentImageDataUrl,
+    }).catch((err) => console.error("[Supabase]", err?.message || err));
+    return;
+  }
+
+  // Edge detected anomaly — fire asynchronous hardware mitigation immediately
+  console.log(`[Edge Triage] 🚨 Anomaly detected (confidence: ${edgeData.highest_confidence}). Escalating to Cloud Vision.`);
+  pausePrinter().then((outcome) => {
+    console.log(`[Edge Mitigation] Printer pause attempt for "${cameraLabel}":`, outcome);
+    broadcast({ type: "printer_pause_result", cameraId, cameraLabel, outcome });
+  }).catch((err) => console.error("[Edge Mitigation] Pause failed:", err));
+}
+
 let rawResult;
 let attempts;
 try {
@@ -1080,13 +1207,16 @@ cameraLabel,
 result: payload,
 snapshotDataUrl: currentImageDataUrl,
 });
-dispatchFailureAlert({
-cameraLabel,
-failureType: normalized.failure_type,
-severity: normalized.severity,
-reason: normalized.reason,
-nextStep: normalized.next_step,
-}).catch((err) => console.error("[Twilio SMS] Error:", err?.message || err));
+// Arm automated WhatsApp incident alert & recurring reminder loop
+incidentManager.recordFailure({
+  cameraId,
+  cameraLabel,
+  failureType: normalized.failure_type,
+  severity: normalized.severity,
+  reason: normalized.reason,
+  nextStep: normalized.next_step,
+  confidence: normalized.confidence,
+});
 pausePrinter().then((outcome) => {
 console.log(`Printer pause attempt for "${cameraLabel}":`, outcome);
 broadcast({ type: "printer_pause_result", cameraId, cameraLabel, outcome });
@@ -1108,6 +1238,10 @@ markAlerted(cameraId, normalized);
 console.log(`"${cameraLabel}" recovered: ${normalized.machine_status}`);
 cameraAlertState.delete(cameraId);
 notifyRecovery({ cameraId, cameraLabel, result: payload });
+// Resolve active incident and halt WhatsApp reminder loops
+incidentManager.resolveFailure(cameraId, { cameraLabel }).catch((err) =>
+  console.error("[IncidentManager Recovery Error]:", err?.message || err)
+);
 } else if (
 normalized.machine_status === "needs_attention" &&
 alertLevel() !== "confirmed" &&

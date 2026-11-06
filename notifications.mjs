@@ -267,24 +267,9 @@ function send({ embed, mention = "", attachment = null, cooldownKey = "", cooldo
     return Promise.resolve({ ok: false, skipped: true, reason: "cooldown" });
   }
 
-  // 1. Mirror alert to WhatsApp
-  if (isTwilioConfigured()) {
-    const waText = embedToWhatsAppText(embed);
-    const recipients = (process.env.ALERT_PHONE_NUMBERS || "+916363813684")
-      .split(",")
-      .map((n) => n.trim())
-      .filter(Boolean);
-
-    for (const phone of recipients) {
-      sendWhatsApp({ to: phone, body: waText }).catch((err) =>
-        console.error(`[Twilio WhatsApp] Error sending to ${phone}:`, err?.message || err)
-      );
-    }
-  }
-
-  // 2. Dispatch to Discord (if configured)
+  // Discord dispatch
   if (!isConfigured()) {
-    return Promise.resolve({ ok: true, channel: "whatsapp" });
+    return Promise.resolve({ ok: true, channel: "discord_skipped" });
   }
   return enqueue(async () => {
     const result = await postToDiscord(
