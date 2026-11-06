@@ -114,10 +114,42 @@ maskedApiKey: maskKey(activeKey),
 app.post("/api/config", (request, response) => {
 const apiKey = clean(request.body?.apiKey, 200);
 const requestedModel = clean(request.body?.model, 120);
+const hasActiveKey = provider === "openrouter" ? Boolean(openrouterApiKey) : Boolean(groq);
+
+// If no new API key is passed, allow switching the active model if an API key is already configured
+if (!apiKey) {
+if (!requestedModel) {
+return response.status(400).json({
+error: "Please enter an API key or select a model.",
+});
+}
+if (!hasActiveKey) {
+return response.status(400).json({
+error: "Please enter an API key first before selecting a model.",
+});
+}
+try {
+model = requestedModel;
+if (provider === "openrouter") {
+process.env.OPENROUTER_MODEL = model;
+upsertEnvFile({ OPENROUTER_MODEL: model });
+} else {
+process.env.GROQ_MODEL = model;
+upsertEnvFile({ GROQ_MODEL: model });
+}
+console.log(`Model switched to ${model} (${provider}).`);
+const activeKey = provider === "openrouter" ? openrouterApiKey : groqApiKey;
+return response.json({ ok: true, provider, model, maskedApiKey: maskKey(activeKey) });
+} catch (error) {
+console.error("Failed to update model:", error);
+return response.status(500).json({ error: "The model could not be saved on the server." });
+}
+}
+
 const isOpenRouterKey = apiKey.startsWith("sk-or-") || (apiKey.startsWith("sk-") && !apiKey.startsWith("gsk_"));
 const isGroqKey = apiKey.startsWith("gsk_");
 
-if (!apiKey || (!isOpenRouterKey && !isGroqKey)) {
+if (!isOpenRouterKey && !isGroqKey) {
 return response.status(400).json({
 error: "Please enter a valid OpenRouter API key (starts with 'sk-or-') or Groq API key (starts with 'gsk_').",
 });
@@ -140,7 +172,7 @@ AI_PROVIDER: "openrouter",
 OPENROUTER_API_KEY: apiKey,
 OPENROUTER_MODEL: model,
 });
-console.log(`OpenRouter key configured for Claude (${maskKey(apiKey)}). Model: ${model}`);
+console.log(`OpenRouter key configured (${maskKey(apiKey)}). Model: ${model}`);
 } else {
 provider = "groq";
 groqApiKey = apiKey;
@@ -150,7 +182,7 @@ process.env.GROQ_API_KEY = apiKey;
 if (requestedModel) {
 model = requestedModel;
 process.env.GROQ_MODEL = requestedModel;
-} else if (!model || model.startsWith("anthropic/")) {
+} else if (!model || model.startsWith("anthropic/") || model.startsWith("meta-llama/") || model.startsWith("nvidia/")) {
 model = DEFAULT_GROQ_MODEL;
 process.env.GROQ_MODEL = model;
 }
@@ -159,7 +191,7 @@ AI_PROVIDER: "groq",
 GROQ_API_KEY: apiKey,
 GROQ_MODEL: model,
 });
-console.log(`Groq API key configured from the browser (${maskKey(apiKey)}). Model: ${model}`);
+console.log(`Groq API key configured (${maskKey(apiKey)}). Model: ${model}`);
 }
 response.json({ ok: true, provider, model, maskedApiKey: maskKey(apiKey) });
 } catch (error) {

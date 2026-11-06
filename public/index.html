@@ -429,6 +429,39 @@ text-transform: uppercase;
 cursor: pointer;
 }
 .theme-select:hover { color: var(--text-secondary); }
+.model-badge {
+font-family: var(--font-mono);
+font-size: 11px;
+font-weight: 600;
+letter-spacing: 0.02em;
+display: inline-flex;
+align-items: center;
+gap: 6px;
+background: rgba(56, 189, 248, 0.12);
+border: 1px solid rgba(56, 189, 248, 0.4);
+color: #38bdf8;
+padding: 6px 14px;
+min-height: 42px;
+border-radius: var(--radius-sm);
+cursor: pointer;
+transition: all var(--dur-fast) var(--ease-out);
+}
+.model-badge:hover {
+background: rgba(56, 189, 248, 0.22);
+border-color: #38bdf8;
+}
+.setup-model-select {
+width: 100%;
+min-height: 42px;
+padding: 8px 12px;
+color: var(--text);
+background-color: var(--surface-1);
+border: 1px solid var(--border-strong);
+border-radius: var(--radius-sm);
+font-size: 13px;
+font-family: var(--font-sans);
+margin-top: 6px;
+}
 .shell {
 width: min(1480px, calc(100% - 34px));
 margin: 22px auto 64px;
@@ -1494,29 +1527,36 @@ text-align: center;
 <img class="setup-logo" src="assets/watch-guard-mark.svg" alt="Watch Guard logo" />
 <h1>Welcome to Watch Guard</h1>
 <p class="setup-sub">
-Connect your OpenRouter account (for Claude) or Groq account to start monitoring your machines. Your key is
-saved on this computer's own server (in its local .env file) — it never
-leaves this machine.
+Select your AI vision model and configure your credentials. Settings are saved locally in .env.
 </p>
 <div id="setupCurrentKey" class="setup-current-key hidden">
 <span class="setup-current-key-label">Active key</span>
 <span id="setupCurrentKeyValue" class="setup-current-key-value"></span>
 </div>
-<label class="setup-label" for="setupApiKey">API Key (OpenRouter or Groq)</label>
+
+<label class="setup-label" for="setupModelSelect" style="margin-top: 12px;">Vision AI Model</label>
+<select id="setupModelSelect" class="setup-model-select">
+<option value="meta-llama/llama-3.2-11b-vision-instruct">⚡ NVIDIA Credits (BYOK): Llama 3.2 11B Vision</option>
+<option value="nvidia/nemotron-3.5-super-vl:free">🆓 NVIDIA Free: Nemotron 3.5 Super VL</option>
+<option value="anthropic/claude-3.5-haiku">⚡ Claude: Claude 3.5 Haiku</option>
+<option value="anthropic/claude-3.5-sonnet">⚡ Claude: Claude 3.5 Sonnet</option>
+<option value="openrouter/free">🆓 OpenRouter Auto-Free Vision</option>
+<option value="qwen/qwen3.6-27b">⚡ Groq: Qwen 3.6 27B</option>
+<option value="custom">✏️ Custom Model ID...</option>
+</select>
+<input id="setupModel" type="text" placeholder="e.g. meta-llama/llama-3.2-11b-vision-instruct" style="margin-top: 8px;" />
+
+<label class="setup-label" for="setupApiKey" style="margin-top: 14px;">API Key <span style="font-size: 11px; opacity: 0.7;">(leave blank to keep active key)</span></label>
 <div class="setup-input-row">
-<input id="setupApiKey" type="password" placeholder="sk-or-v1-... (OpenRouter / Claude) or gsk_... (Groq)" autocomplete="off" spellcheck="false" />
+<input id="setupApiKey" type="password" placeholder="sk-or-v1-... (OpenRouter) or gsk_... (Groq)" autocomplete="off" spellcheck="false" />
 <button id="setupToggleVisibility" type="button">Show</button>
 </div>
 <p class="setup-hint">
-For Claude: <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">Get an OpenRouter key at openrouter.ai/keys</a> &bull; For Groq: <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com</a>
+For NVIDIA Credits &amp; Claude: <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">OpenRouter Key</a> &bull; For Groq: <a href="https://console.groq.com/keys" target="_blank" rel="noopener">Groq Key</a>
 </p>
-<details class="setup-advanced">
-<summary>Advanced: vision model</summary>
-<input id="setupModel" type="text" placeholder="anthropic/claude-3.5-haiku or qwen/qwen3.6-27b" />
-</details>
 <p id="setupError" class="setup-error hidden"></p>
-<button id="setupSave" class="primary setup-save">Save &amp; Continue</button>
-<p class="setup-note">Claude requires an OpenRouter key (e.g. anthropic/claude-3.5-haiku). Watch Guard saves your session and configuration locally.</p>
+<button id="setupSave" class="primary setup-save">Save &amp; Shift Model</button>
+<p class="setup-note">You can shift models anytime. If your key is already saved, simply select a model and click Save.</p>
 </div>
 </div>
 <header class="app-header">
@@ -1538,7 +1578,10 @@ For Claude: <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">
 <option value="light">Light mode</option>
 <option value="hex">Hexagonal background</option>
 </select>
-<button id="openSetup" class="secondary" title="Update your Groq API key">API Key</button>
+<button id="modelBadge" class="secondary model-badge" title="Active AI model — click to shift model">
+<span style="color:#38bdf8;">⚡</span> <span id="activeModelLabel">Loading model…</span>
+</button>
+<button id="openSetup" class="secondary" title="Settings &amp; Model Selection">Settings</button>
 <button id="scanHeader" class="primary">Scan Cameras</button>
 </div>
 </header>
@@ -1874,15 +1917,50 @@ saveRename: $("saveRename"),
 setupOverlay: $("setupOverlay"),
 setupApiKey: $("setupApiKey"),
 setupModel: $("setupModel"),
+setupModelSelect: $("setupModelSelect"),
 setupSave: $("setupSave"),
 setupError: $("setupError"),
 setupToggleVisibility: $("setupToggleVisibility"),
 setupCurrentKey: $("setupCurrentKey"),
 setupCurrentKeyValue: $("setupCurrentKeyValue"),
 openSetup: $("openSetup"),
+modelBadge: $("modelBadge"),
+activeModelLabel: $("activeModelLabel"),
 };
 
-// --- API key setup screen -------------------------------------------------
+// --- API key & Model setup screen -----------------------------------------
+let hasConfiguredKey = false;
+let currentActiveModel = "";
+
+function formatModelName(id) {
+if (!id) return "Select Model";
+if (id.includes("llama-3.2-11b-vision")) return "NVIDIA: Llama 3.2 11B";
+if (id.includes("nemotron-3.5-super-vl")) return "NVIDIA: Nemotron VL (Free)";
+if (id.includes("claude-3.5-haiku")) return "Claude 3.5 Haiku";
+if (id.includes("claude-3.5-sonnet")) return "Claude 3.5 Sonnet";
+if (id.includes("openrouter/free")) return "OpenRouter Auto-Free";
+if (id.includes("qwen")) return "Groq: Qwen 3.6";
+const parts = id.split("/");
+return parts[parts.length - 1] || id;
+}
+
+function updateActiveModel(modelName, provider) {
+currentActiveModel = modelName || "";
+if (elements.activeModelLabel) {
+elements.activeModelLabel.textContent = formatModelName(currentActiveModel);
+}
+if (elements.modelBadge) {
+elements.modelBadge.title = `Active Model: ${currentActiveModel} (${provider || "AI"}) — click to shift model`;
+}
+if (elements.setupModel) {
+elements.setupModel.value = currentActiveModel;
+}
+if (elements.setupModelSelect) {
+const hasOption = Array.from(elements.setupModelSelect.options).some((o) => o.value === currentActiveModel);
+elements.setupModelSelect.value = hasOption ? currentActiveModel : "custom";
+}
+}
+
 function updateCurrentKeyChip(maskedApiKey) {
 if (maskedApiKey) {
 elements.setupCurrentKeyValue.textContent = maskedApiKey;
@@ -1891,28 +1969,42 @@ elements.setupCurrentKey.classList.remove("hidden");
 elements.setupCurrentKey.classList.add("hidden");
 }
 }
+
 function showSetup(prefillModel) {
 elements.setupOverlay.classList.remove("hidden");
-if (prefillModel) elements.setupModel.value = prefillModel;
+const modelToUse = prefillModel || currentActiveModel || elements.setupModel.value;
+if (modelToUse) updateActiveModel(modelToUse);
 elements.setupApiKey.value = "";
 elements.setupApiKey.type = "password";
 elements.setupToggleVisibility.textContent = "Show";
 elements.setupError.classList.add("hidden");
+if (!hasConfiguredKey) {
 elements.setupApiKey.focus();
+} else {
+elements.setupModelSelect.focus();
 }
+}
+
 function hideSetup() {
 elements.setupOverlay.classList.add("hidden");
 }
+
 elements.setupToggleVisibility.addEventListener("click", () => {
 const showing = elements.setupApiKey.type === "text";
 elements.setupApiKey.type = showing ? "password" : "text";
 elements.setupToggleVisibility.textContent = showing ? "Show" : "Hide";
 });
+
 async function saveSetup() {
 const apiKey = elements.setupApiKey.value.trim();
 const modelValue = elements.setupModel.value.trim();
-if (!apiKey) {
+if (!apiKey && !hasConfiguredKey) {
 elements.setupError.textContent = "Enter your API key first (OpenRouter or Groq).";
+elements.setupError.classList.remove("hidden");
+return;
+}
+if (!modelValue) {
+elements.setupError.textContent = "Please select or enter a vision model.";
 elements.setupError.classList.remove("hidden");
 return;
 }
@@ -1922,33 +2014,57 @@ try {
 const response = await fetch("/api/config", {
 method: "POST",
 headers: { "Content-Type": "application/json" },
-body: JSON.stringify({ apiKey, ...(modelValue ? { model: modelValue } : {}) }),
+body: JSON.stringify({
+...(apiKey ? { apiKey } : {}),
+model: modelValue,
+}),
 });
 const data = await response.json().catch(() => ({}));
 if (!response.ok) {
-throw new Error(data.error || "The key could not be saved.");
+throw new Error(data.error || "The configuration could not be saved.");
 }
+hasConfiguredKey = Boolean(data.hasApiKey);
 updateCurrentKeyChip(data.maskedApiKey);
+updateActiveModel(data.model, data.provider);
 hideSetup();
 } catch (error) {
 elements.setupError.textContent = error.message;
 elements.setupError.classList.remove("hidden");
 } finally {
 elements.setupSave.disabled = false;
-elements.setupSave.textContent = "Save & Continue";
+elements.setupSave.textContent = "Save & Shift Model";
 }
 }
+
 elements.setupSave.addEventListener("click", saveSetup);
 elements.setupApiKey.addEventListener("keydown", (event) => {
 if (event.key === "Enter") saveSetup();
 });
-elements.openSetup.addEventListener("click", () => showSetup(elements.setupModel.value));
+elements.setupModel.addEventListener("keydown", (event) => {
+if (event.key === "Enter") saveSetup();
+});
+elements.setupModelSelect.addEventListener("change", () => {
+if (elements.setupModelSelect.value !== "custom") {
+elements.setupModel.value = elements.setupModelSelect.value;
+} else {
+elements.setupModel.focus();
+}
+});
+elements.setupModel.addEventListener("input", () => {
+const val = elements.setupModel.value.trim();
+const hasOption = Array.from(elements.setupModelSelect.options).some((o) => o.value === val);
+elements.setupModelSelect.value = hasOption ? val : "custom";
+});
+elements.openSetup.addEventListener("click", () => showSetup(currentActiveModel));
+elements.modelBadge.addEventListener("click", () => showSetup(currentActiveModel));
+
 (async function checkApiKeyConfigured() {
 try {
 const response = await fetch("/api/config");
 const data = await response.json();
-elements.setupModel.value = data.model || "";
+hasConfiguredKey = Boolean(data.hasApiKey);
 updateCurrentKeyChip(data.maskedApiKey);
+updateActiveModel(data.model, data.provider);
 if (!data.hasApiKey) showSetup(data.model);
 } catch (error) {
 showSetup();
