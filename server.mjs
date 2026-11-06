@@ -1128,7 +1128,7 @@ server.on("listening", () => {
 const notifications = describeNotifications();
 console.log(`Vision OPS is running at http://localhost:${port}`);
 const hasActiveKey = provider === "openrouter" ? Boolean(openrouterApiKey) : Boolean(groq);
-console.log(`Provider: ${provider === "openrouter" ? "OpenRouter (Claude)" : "Groq"} | Model: ${model}`);
+console.log(`Provider: ${provider === "openrouter" ? "OpenRouter" : "Groq"} | Model: ${model}`);
 console.log(
 hasActiveKey
 ? `${provider === "openrouter" ? "OpenRouter" : "Groq"} API key loaded.`
