@@ -17,6 +17,8 @@ notifyRoutine,
 notifyTest,
 notifyWarning,
 } from "./notifications.mjs";
+import { pushToSupabase } from "./supabase-bridge.mjs";
+import { dispatchFailureAlert, isTwilioConfigured } from "./sms-service.mjs";
 const app = express();
 const port = Number(process.env.PORT || 3001);
 const DEFAULT_GROQ_MODEL = "qwen/qwen3.8-27b";
@@ -813,6 +815,26 @@ error: "Discord rejected the test message.",
 details: String(outcome?.error || outcome?.status || "unknown"),
 });
 });
+
+app.post("/api/sms/test", async (_request, response) => {
+if (!isTwilioConfigured()) {
+return response.status(400).json({
+error: "Twilio is not configured. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER in .env.",
+});
+}
+try {
+const results = await dispatchFailureAlert({
+cameraLabel: "Test Unit #1",
+failureType: "manual_test",
+severity: 5,
+reason: "Operator initiated a test notification from Watch Guard.",
+nextStep: "Confirm SMS receipt on your mobile phone.",
+});
+return response.json({ ok: true, results });
+} catch (error) {
+return response.status(500).json({ error: error.message });
+}
+});
 const printerDrivers = {
 none: {
 async pause() {
@@ -1044,6 +1066,12 @@ camera_id: cameraId,
 };
 response.json(payload);
 broadcast({ type: "status_update", cameraId, cameraLabel, result: payload });
+pushToSupabase({
+...payload,
+machine_name: cameraLabel,
+machine_type: machineType,
+snapshot: currentImageDataUrl,
+}).catch((err) => console.error("[Supabase]", err?.message || err));
 if (confirmation.newly_confirmed) {
 console.log(`Confirmed failure on "${cameraLabel}": ${normalized.failure_type}`);
 notifyFailure({
@@ -1052,6 +1080,13 @@ cameraLabel,
 result: payload,
 snapshotDataUrl: currentImageDataUrl,
 });
+dispatchFailureAlert({
+cameraLabel,
+failureType: normalized.failure_type,
+severity: normalized.severity,
+reason: normalized.reason,
+nextStep: normalized.next_step,
+}).catch((err) => console.error("[Twilio SMS] Error:", err?.message || err));
 pausePrinter().then((outcome) => {
 console.log(`Printer pause attempt for "${cameraLabel}":`, outcome);
 broadcast({ type: "printer_pause_result", cameraId, cameraLabel, outcome });

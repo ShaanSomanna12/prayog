@@ -6,6 +6,8 @@
 // pause. Nothing in this file touches the UI — the webhook URL comes from
 // DISCORD_WEBHOOK_URL in .env, or from POST /api/notifications at runtime.
 
+import { sendWhatsApp, isTwilioConfigured } from "./sms-service.mjs";
+
 const COLORS = {
   failure: 0xe5484d,
   warning: 0xf5a524,
@@ -242,13 +244,47 @@ function buildPayload({ embed, mention, suppressed }) {
   };
 }
 
-function send({ embed, mention = "", attachment = null, cooldownKey = "", cooldownMs = 0 }) {
-  if (!isConfigured()) {
-    return Promise.resolve({ ok: false, skipped: true, reason: "no_webhook" });
+function embedToWhatsAppText(embed) {
+  let text = `*${embed.title || "Watch Guard Alert"}*\n`;
+  if (embed.description) {
+    text += `${embed.description}\n`;
   }
+  if (Array.isArray(embed.fields) && embed.fields.length > 0) {
+    text += "\n";
+    for (const f of embed.fields) {
+      if (f.name && f.value) {
+        text += `• *${f.name}:* ${f.value}\n`;
+      }
+    }
+  }
+  text += `\n⏱ _${new Date().toLocaleTimeString()}_`;
+  return text.trim();
+}
+
+function send({ embed, mention = "", attachment = null, cooldownKey = "", cooldownMs = 0 }) {
   const gate = checkCooldown(cooldownKey, cooldownMs);
   if (!gate.allowed) {
     return Promise.resolve({ ok: false, skipped: true, reason: "cooldown" });
+  }
+
+  // 1. Mirror alert to WhatsApp
+  if (isTwilioConfigured()) {
+    const waText = embedToWhatsAppText(embed);
+    const recipients = (process.env.ALERT_PHONE_NUMBERS || "+916363813684")
+      .split(",")
+      .map((n) => n.trim())
+      .filter(Boolean);
+
+    for (const phone of recipients) {
+      sendWhatsApp({ to: phone, body: waText }).catch((err) =>
+        console.error(`[Twilio WhatsApp] Error sending to ${phone}:`, err?.message || err)
+      );
+    }
+  }
+
+  // 2. Dispatch to Discord (if configured)
+  if (!isConfigured()) {
+    return Promise.resolve({ ok: true, channel: "whatsapp" });
   }
   return enqueue(async () => {
     const result = await postToDiscord(
