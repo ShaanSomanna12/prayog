@@ -20,13 +20,17 @@ model_paths = [
     "yolov8n.pt",
 ]
 
-model_path = next((p for p in model_paths if os.path.exists(p)), "best.pt")
+model_path = next((p for p in model_paths if os.path.exists(p)), None)
+if not model_path:
+    print("[Watch Guard] Notice: Custom 'best.pt' not found locally yet.")
+    print("[Watch Guard] Auto-provisioning base 'yolov8n.pt' fallback so the edge server starts immediately...")
+    model_path = "yolov8n.pt"
 
 # Load the trained YOLO model into memory upon startup
 try:
     print(f"[Watch Guard] Loading YOLO model weights from: {model_path}")
     model = YOLO(model_path)
-    print("[Watch Guard] YOLO model loaded successfully into memory.")
+    print(f"[Watch Guard] YOLO model loaded successfully into memory. (Weights: {model_path})")
 except Exception as e:
     print(f"Fatal error loading model weights from '{model_path}': {e}")
     exit(1)
