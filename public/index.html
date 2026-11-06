@@ -1536,7 +1536,9 @@ Select your AI vision model and configure your credentials. Settings are saved l
 
 <label class="setup-label" for="setupModelSelect" style="margin-top: 12px;">Vision AI Model &amp; Engine</label>
 <select id="setupModelSelect" class="setup-model-select">
-<option value="qwen/qwen3.6-27b">⚡ Groq API: Qwen 3.6 27B (Scanning &amp; Analysis)</option>
+<option value="qwen/qwen3.6-27b">⚡ Groq API: Qwen 3.6 27B (Fast Scanning &amp; Analysis)</option>
+<option value="nvidia/nemotron-3.5-super-vl:free">🟢 OpenRouter: NVIDIA Nemotron 3.5 Super VL (Free)</option>
+<option value="meta-llama/llama-3.2-11b-vision-instruct">🟢 OpenRouter: NVIDIA NIM Credits (Llama 3.2 11B Vision)</option>
 <option value="anthropic/claude-3.5-haiku">🧠 OpenRouter: Claude 3.5 Haiku</option>
 <option value="anthropic/claude-3.5-sonnet">🧠 OpenRouter: Claude 3.5 Sonnet</option>
 <option value="openrouter/free">🆓 OpenRouter: Auto-Free Vision</option>
@@ -1932,9 +1934,11 @@ let currentActiveModel = "";
 
 function formatModelName(id, provider) {
 if (!id) return "Select Model";
+if (id.includes("nemotron-3.5-super-vl")) return "NVIDIA Nemotron (Free)";
+if (id.includes("llama-3.2-11b-vision")) return "NVIDIA NIM Llama 3.2";
 if (provider === "groq" || id.includes("qwen")) return "Groq: Qwen 3.6 (Scanning)";
-if (id.includes("claude-3.5-haiku")) return "Claude 3.5 Haiku (OpenRouter)";
-if (id.includes("claude-3.5-sonnet")) return "Claude 3.5 Sonnet (OpenRouter)";
+if (id.includes("claude-3.5-haiku")) return "Claude 3.5 Haiku";
+if (id.includes("claude-3.5-sonnet")) return "Claude 3.5 Sonnet";
 if (id.includes("openrouter/free")) return "OpenRouter Auto-Free";
 const parts = id.split("/");
 return parts[parts.length - 1] || id;

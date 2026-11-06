@@ -124,10 +124,15 @@ error: "Please enter an API key or select a model.",
 });
 }
 try {
-if (requestedModel.startsWith("anthropic/") || requestedModel.startsWith("openrouter/")) {
+if (
+requestedModel.startsWith("anthropic/") ||
+requestedModel.startsWith("openrouter/") ||
+requestedModel.startsWith("nvidia/") ||
+requestedModel.startsWith("meta-llama/")
+) {
 if (!openrouterApiKey) {
 return response.status(400).json({
-error: "No OpenRouter API key configured for Claude. Enter your OpenRouter key (sk-or-v1-...).",
+error: "No OpenRouter API key configured. Enter your OpenRouter key (sk-or-v1-...).",
 });
 }
 provider = "openrouter";
