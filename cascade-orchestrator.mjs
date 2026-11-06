@@ -66,7 +66,7 @@ export async function triggerOctoPrintPause() {
 export async function queryEdgeInference(frameBase64) {
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 2500); // 2.5s edge timeout
+    const timer = setTimeout(() => controller.abort(), 5000); // 5s edge timeout (allows cold-start model warmup)
 
     const res = await fetch(EDGE_INFERENCE_URL, {
       method: 'POST',
