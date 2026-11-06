@@ -123,12 +123,30 @@ return response.status(400).json({
 error: "Please enter an API key or select a model.",
 });
 }
-if (!hasActiveKey) {
+try {
+if (requestedModel.startsWith("anthropic/") || requestedModel.startsWith("openrouter/")) {
+if (!openrouterApiKey) {
 return response.status(400).json({
-error: "Please enter an API key first before selecting a model.",
+error: "No OpenRouter API key configured for Claude. Enter your OpenRouter key (sk-or-v1-...).",
 });
 }
-try {
+provider = "openrouter";
+model = requestedModel;
+process.env.AI_PROVIDER = "openrouter";
+process.env.OPENROUTER_MODEL = model;
+upsertEnvFile({ AI_PROVIDER: "openrouter", OPENROUTER_MODEL: model });
+} else if (requestedModel.includes("qwen") || !requestedModel.includes("/")) {
+if (!groq) {
+return response.status(400).json({
+error: "No Groq API key configured for scanning. Enter your Groq key (gsk_...).",
+});
+}
+provider = "groq";
+model = requestedModel;
+process.env.AI_PROVIDER = "groq";
+process.env.GROQ_MODEL = model;
+upsertEnvFile({ AI_PROVIDER: "groq", GROQ_MODEL: model });
+} else {
 model = requestedModel;
 if (provider === "openrouter") {
 process.env.OPENROUTER_MODEL = model;
@@ -137,7 +155,8 @@ upsertEnvFile({ OPENROUTER_MODEL: model });
 process.env.GROQ_MODEL = model;
 upsertEnvFile({ GROQ_MODEL: model });
 }
-console.log(`Model switched to ${model} (${provider}).`);
+}
+console.log(`Scanning model switched to: ${model} (${provider}).`);
 const activeKey = provider === "openrouter" ? openrouterApiKey : groqApiKey;
 return response.json({ ok: true, provider, model, maskedApiKey: maskKey(activeKey) });
 } catch (error) {
