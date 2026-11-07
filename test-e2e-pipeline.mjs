@@ -27,3 +27,4 @@ async function testPipeline() {
 }
 
 testPipeline().catch(console.error);
+

@@ -73,7 +73,7 @@ class AnalysisResponse(BaseModel):
 # Thread-safe prediction wrapper to prevent memory leaks and race conditions
 @ThreadingLocked()
 def safe_predict(image_matrix):
-    return model.predict(source=image_matrix, conf=0.4, save=False, verbose=False)
+    return model.predict(source=image_matrix, conf=0.55, save=False, verbose=False)
 
 @app.get("/")
 def health_check():
@@ -139,7 +139,8 @@ async def analyze_frame(payload: FramePayload):
                 tmp_path = tmp.name
 
             try:
-                preds = roboflow_model.predict(tmp_path, confidence=35).json().get("predictions", [])
+                # Require >= 55% confidence to eliminate false positives on people, clothing, or room background
+                preds = roboflow_model.predict(tmp_path, confidence=55).json().get("predictions", [])
                 for p in preds:
                     c_name = p.get("class", "spaghetti")
                     conf = float(p.get("confidence", 0.0))
@@ -151,7 +152,7 @@ async def analyze_frame(payload: FramePayload):
                         coordinates=coords
                     ))
 
-                    if "spaghetti" in c_name.lower():
+                    if "spaghetti" in c_name.lower() and conf >= 0.55:
                         detected_status = "failure"
                         if conf > max_conf:
                             max_conf = conf

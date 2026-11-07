@@ -1,0 +1,13 @@
+names:
+- spaghetti
+- stringing
+nc: 2
+roboflow:
+  license: CC BY 4.0
+  project: spaghetti-3d
+  url: https://universe.roboflow.com/3d-printing-failure/spaghetti-3d/dataset/1
+  version: 1
+  workspace: 3d-printing-failure
+test: ../test/images
+train: ../train/images
+val: ../valid/images
